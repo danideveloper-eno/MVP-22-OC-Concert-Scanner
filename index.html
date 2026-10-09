@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>MVP 22 October Concert Scanner</title>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#000000;
+    --bg-2:#070707;
+    --card:#101010;
+    --card-2:#171717;
+    --line:#2a2a2a;
+    --line-2:#3a3a3a;
+    --text:#ffffff;
+    --muted:#a3a3a3;
+    --soft:#d4d4d4;
+    --success:#ffffff;
+    --used:#cfcfcf;
+    --invalid:#575757;
+    --shadow:0 18px 50px rgba(0,0,0,.45);
+    --radius:22px;
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+  html,body{
+    margin:0;
+    min-height:100%;
+    background:
+      radial-gradient(circle at top center, rgba(255,255,255,.10), transparent 26%),
+      radial-gradient(circle at bottom left, rgba(255,255,255,.05), transparent 28%),
+      linear-gradient(180deg, #050505 0%, #000000 100%);
+    color:var(--text);
+    font-family:Arial, Helvetica, sans-serif;
+  }
+
+  body{
+    padding:16px;
+    padding-bottom:calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .app{
+    width:min(100%, 980px);
+    margin:0 auto;
+  }
+
+  .hero{
+    position:relative;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border-radius:28px;
+    box-shadow:var(--shadow);
+    padding:18px;
+    margin-bottom:14px;
+  }
+
+  .hero::before,
+  .hero::after{
+    content:"";
+    position:absolute;
+    pointer-events:none;
+    border-radius:50%;
+    filter:blur(8px);
+  }
+
+  .hero::before{
+    width:180px;height:180px;right:-50px;top:-60px;
+    background:rgba(255,255,255,.08);
+  }
+
+  .hero::after{
+    width:140px;height:140px;left:-40px;bottom:-50px;
+    background:rgba(255,255,255,.05);
+  }
+
+  .topbar{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+    position:relative;
+    z-index:1;
+  }
+
+  .title-wrap{min-width:0}
+
+  .eyebrow{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:var(--soft);
+    font-size:12px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+
+  .net-pill,
+  .gate-pill,
+  .api-pill,
+  .clock-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.04);
+    color:#fff;
+    border-radius:999px;
+    padding:8px 12px;
+    font-size:12px;
+    font-weight:700;
+    backdrop-filter:blur(8px);
+  }
+
+  .dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background:#666;
+    box-shadow:0 0 0 0 rgba(255,255,255,.4);
+  }
+
+  .dot.on{
+    background:#fff;
+    box-shadow:0 0 14px rgba(255,255,255,.8);
+  }
+
+  .dot.off{background:#6a6a6a}
+
+  h1{
+    margin:0;
+    font-size:clamp(26px, 5vw, 40px);
+    line-height:1;
+    letter-spacing:-.03em;
+  }
+
+  .subtitle{
+    margin:10px 0 0;
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.7;
+    max-width:720px;
+  }
+
+  .meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:14px;
+    position:relative;
+    z-index:1;
+  }
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+    margin:14px 0;
+  }
+
+  .stat{
+    border:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border-radius:20px;
+    padding:14px;
+    min-height:92px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+
+  .stat .label{
+    color:var(--muted);
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+  }
+
+  .stat b{
+    font-size:30px;
+    line-height:1;
+    margin-top:10px;
+  }
+
+  .panel{
+    border:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.025));
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+
+  .scanner-head,
+  .section-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:16px 16px 0;
+  }
+
+  .section-title{
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.02em;
+  }
+
+  .section-sub{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:4px;
+  }
+
+  .preview-shell{
+    padding:14px;
+  }
+
+  .reader-shell{
+    position:relative;
+    border-radius:24px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.10);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015)),
+      #000;
+    min-height:300px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+
+  #reader{
+    width:100%;
+    max-width:100%;
+    margin:0 auto;
+    background:#000;
+  }
+
+  #reader video{
+    width:100%!important;
+    height:auto!important;
+    display:block;
+  }
+
+  .scan-frame{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:4;
+  }
+
+  .scan-box{
+    position:relative;
+    width:min(68vw, 280px);
+    aspect-ratio:1/1;
+    border-radius:28px;
+    border:1px solid rgba(255,255,255,.18);
+    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    box-shadow:0 0 0 9999px rgba(0,0,0,.14);
+  }
+
+  .scan-box::before,
+  .scan-box::after{
+    content:"";
+    position:absolute;
+    left:10px;
+    right:10px;
+    height:2px;
+    border-radius:999px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.9), transparent);
+    animation:scan 2.5s linear infinite;
+    box-shadow:0 0 24px rgba(255,255,255,.5);
+  }
+
+  .scan-box::after{animation-delay:1.25s; opacity:.55}
+
+  .corner{
+    position:absolute;
+    width:34px;height:34px;
+    border-color:#fff;
+    border-style:solid;
+    filter:drop-shadow(0 0 10px rgba(255,255,255,.35));
+  }
+
+  .corner.tl{left:12px;top:12px;border-width:3px 0 0 3px;border-top-left-radius:18px}
+  .corner.tr{right:12px;top:12px;border-width:3px 3px 0 0;border-top-right-radius:18px}
+  .corner.bl{left:12px;bottom:12px;border-width:0 0 3px 3px;border-bottom-left-radius:18px}
+  .corner.br{right:12px;bottom:12px;border-width:0 3px 3px 0;border-bottom-right-radius:18px}
+
+  @keyframes scan{
+    0%{top:18px;opacity:.3}
+    12%{opacity:1}
+    50%{top:calc(100% - 18px);opacity:.95}
+    100%{top:18px;opacity:.3}
+  }
+
+  .reader-meta{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    padding:12px 2px 2px;
+  }
+
+  .micro{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.6;
+  }
+
+  .controls{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    padding:0 14px 14px;
+  }
+
+  .btn,
+  .mini-btn{
+    border:none;
+    outline:none;
+    font-family:inherit;
+    cursor:pointer;
+    transition:transform .18s ease, opacity .18s ease, background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+
+  .btn:active,
+  .mini-btn:active{transform:scale(.985)}
+
+  .btn.main{
+    width:100%;
+    border-radius:18px;
+    padding:16px 18px;
+    background:#fff;
+    color:#000;
+    font-size:16px;
+    font-weight:800;
+    box-shadow:0 10px 30px rgba(255,255,255,.12);
+  }
+
+  .btn.main:hover{box-shadow:0 14px 36px rgba(255,255,255,.18)}
+
+  .btn.ghost{
+    width:100%;
+    border-radius:16px;
+    padding:14px 16px;
+    background:rgba(255,255,255,.03);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.10);
+    font-size:14px;
+    font-weight:700;
+  }
+
+  .btn.ghost:hover{background:rgba(255,255,255,.06)}
+
+  .button-row{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+  }
+
+  #result{
+    margin:0 14px 14px;
+    border-radius:22px;
+    padding:18px;
+    display:none;
+    font-size:24px;
+    font-weight:800;
+    line-height:1.2;
+    animation:pop .18s ease-out;
+  }
+
+  #result.success{
+    background:#fff;
+    color:#000;
+    border:1px solid #fff;
+  }
+
+  #result.used{
+    background:#d7d7d7;
+    color:#000;
+    border:1px solid #d7d7d7;
+  }
+
+  #result.invalid{
+    background:#525252;
+    color:#fff;
+    border:1px solid #696969;
+  }
+
+  #result.neutral{
+    background:rgba(255,255,255,.04);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.12);
+  }
+
+  @keyframes pop{
+    from{transform:translateY(8px) scale(.985);opacity:0}
+    to{transform:translateY(0) scale(1);opacity:1}
+  }
+
+  #details{
+    font-size:14px;
+    font-weight:600;
+    margin-top:10px;
+    line-height:1.8;
+    opacity:.96;
+  }
+
+  #details .k{
+    display:inline-block;
+    min-width:92px;
+    font-size:11px;
+    letter-spacing:.10em;
+    text-transform:uppercase;
+    opacity:.72;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:14px;
+    margin-top:14px;
+  }
+
+  .section-body{padding:14px 16px 16px}
+
+  .manual-wrap{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    margin-top:12px;
+  }
+
+  .manual-wrap input{
+    width:100%;
+    min-width:0;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.04);
+    color:#fff;
+    padding:15px 16px;
+    font-size:15px;
+    font-family:inherit;
+    text-align:center;
+    direction:ltr;
+    outline:none;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+
+  .manual-wrap input::placeholder{color:#8f8f8f}
+
+  .token-wrap{
+    margin-top:14px;
+    display:grid;
+    gap:10px;
+  }
+
+  .token-input{
+    width:100%;
+    min-width:0;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.04);
+    color:#fff;
+    padding:15px 16px;
+    font-size:15px;
+    font-family:inherit;
+    text-align:left;
+    direction:ltr;
+    outline:none;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+
+  .token-input::placeholder{color:#8f8f8f}
+
+  .token-actions{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+  }
+
+  .hint{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.6;
+  }
+
+  .mini-btn{
+    border-radius:16px;
+    padding:0 18px;
+    min-width:112px;
+    background:#fff;
+    color:#000;
+    font-size:14px;
+    font-weight:800;
+  }
+
+  .stack{display:grid;gap:14px}
+
+  .info-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    gap:10px;
+  }
+
+  .info-card{
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.03);
+    border-radius:18px;
+    padding:12px 14px;
+  }
+
+  .info-card .tag{
+    color:var(--muted);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    margin-bottom:8px;
+  }
+
+  .info-card .value{
+    font-size:15px;
+    font-weight:700;
+    word-break:break-word;
+  }
+
+  #err{
+    margin-top:12px;
+    border-radius:16px;
+    padding:12px 14px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08);
+    color:#d8d8d8;
+    font-size:12px;
+    line-height:1.7;
+    white-space:pre-wrap;
+    display:none;
+  }
+
+  .log-list{
+    display:grid;
+    gap:8px;
+    margin-top:12px;
+    max-height:260px;
+    overflow:auto;
+  }
+
+  .log-item,
+  .log-empty{
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.03);
+    border-radius:16px;
+    padding:12px 14px;
+  }
+
+  .log-item{
+    width:100%;
+    text-align:left;
+    color:#fff;
+    cursor:pointer;
+  }
+
+  button.log-item{
+    appearance:none;
+    -webkit-appearance:none;
+    font:inherit;
+    background:rgba(255,255,255,.03);
+  }
+
+  button.log-item:hover{
+    background:rgba(255,255,255,.06);
+    border-color:rgba(255,255,255,.16);
+  }
+
+  .log-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+
+  .log-main{
+    font-size:13px;
+    font-weight:700;
+    color:#fff;
+    word-break:break-word;
+  }
+
+  .log-sub{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:6px;
+    line-height:1.5;
+  }
+
+  .log-time{
+    color:var(--muted);
+    font-size:11px;
+    white-space:nowrap;
+  }
+
+  .status-strip{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  .chip{
+    border-radius:999px;
+    padding:7px 11px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.04);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .footer-note{
+    color:var(--muted);
+    text-align:center;
+    font-size:11px;
+    line-height:1.8;
+    margin:16px 0 4px;
+  }
+
+  .modal{
+    position:fixed;
+    inset:0;
+    z-index:60;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    padding:16px;
+    background:rgba(0,0,0,.74);
+    backdrop-filter:blur(6px);
+  }
+
+  .modal-card{
+    width:min(100%, 760px);
+    max-height:92vh;
+    overflow:auto;
+    border-radius:24px;
+    border:1px solid rgba(255,255,255,.12);
+    background:linear-gradient(180deg, rgba(22,22,22,.98), rgba(10,10,10,.98));
+    box-shadow:0 24px 70px rgba(0,0,0,.5);
+    padding:18px;
+  }
+
+  .modal-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+  }
+
+  .modal-title{
+    font-size:22px;
+    font-weight:800;
+    line-height:1.1;
+  }
+
+  .modal-sub{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:8px;
+    line-height:1.6;
+  }
+
+  .modal-close{
+    width:auto;
+    min-width:92px;
+    padding:12px 14px;
+  }
+
+  .detail-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    gap:10px;
+  }
+
+  .detail-card{
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.03);
+    border-radius:18px;
+    padding:12px 14px;
+  }
+
+  .detail-label{
+    color:var(--muted);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    margin-bottom:8px;
+  }
+
+  .detail-value{
+    font-size:15px;
+    font-weight:700;
+    line-height:1.6;
+    word-break:break-word;
+  }
+
+  .detail-value.mono{
+    font-family:Arial, Helvetica, sans-serif;
+    letter-spacing:.03em;
+  }
+
+  .modal-status{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border-radius:999px;
+    padding:8px 12px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.05);
+    color:#fff;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:14px;
+  }
+
+  .hide{display:none!important}
+
+  @media (min-width: 920px){
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(0, 1.1fr) minmax(320px, .9fr);
+      gap:14px;
+      align-items:start;
+    }
+
+    .grid{margin-top:0}
+  }
+
+  @media (max-width: 760px){
+    .stats{grid-template-columns:1fr}
+    .button-row{grid-template-columns:1fr}
+    .manual-wrap{grid-template-columns:1fr}
+    .token-actions{grid-template-columns:1fr}
+    .info-grid{grid-template-columns:1fr}
+    .detail-grid{grid-template-columns:1fr}
+    .topbar{flex-direction:column;align-items:stretch}
+    .scanner-head,.section-head{padding:14px 14px 0}
+    .preview-shell,.section-body,.controls{padding-left:12px;padding-right:12px}
+    .hero{padding:16px}
+    .modal-card{padding:16px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="hero">
+    <div class="topbar">
+      <div class="title-wrap">
+        <div class="eyebrow">
+          <span>MVP 22 October Concert Scanner</span>
+        </div>
+        <h1>Entry Scanner</h1>
+        <p class="subtitle">check-in interface for live ticket validation, entry control, and real-time attendance tracking.</p>
+      </div>
+      <div class="stack">
+        <div class="net-pill"><span id="net" class="dot"></span><span id="netText">Online</span></div>
+        <div class="clock-pill" id="clock">TR --:--:--</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div class="gate-pill">Gate: <span id="gateLabel">Gate-1</span></div>
+      <div class="api-pill">API: <span id="apiState">Checking</span></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="label">Checked In</span>
+        <b id="sIn">–</b>
+      </div>
+      <div class="stat">
+        <span class="label">Remaining</span>
+        <b id="sLeft">–</b>
+      </div>
+      <div class="stat">
+        <span class="label">Paid Tickets</span>
+        <b id="sPaid">–</b>
+      </div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="scanner-head">
+        <div>
+          <div class="section-title">Scanner Camera</div>
+          <div class="section-sub">Use the rear camera for the fastest read.</div>
+        </div>
+        <button id="statsBtn" class="btn ghost" style="width:auto;padding:10px 14px">Refresh Stats</button>
+      </div>
+
+      <div class="preview-shell">
+        <div class="reader-shell">
+          <div id="reader"></div>
+          <div class="scan-frame">
+            <div class="scan-box">
+              <span class="corner tl"></span>
+              <span class="corner tr"></span>
+              <span class="corner bl"></span>
+              <span class="corner br"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="reader-meta">
+          <div class="micro">Camera access is required. The page must be opened over HTTPS.</div>
+          <div class="status-strip">
+            <span class="chip" id="statusChip">Idle</span>
+            <span class="chip" id="deviceChip">Rear Camera</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn" class="btn main">Start Scanning</button>
+        <div class="button-row hide" id="camCtl">
+          <button id="torchBtn" class="btn ghost">Flashlight</button>
+          <button id="flipBtn" class="btn ghost">Switch Camera</button>
+          <button id="stopBtn" class="btn ghost">Stop Scanner</button>
+        </div>
+      </div>
+
+      <div id="result"></div>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <div class="section-title">Manual Check</div>
+            <div class="section-sub">Enter the ticket code if the camera cannot scan it.</div>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="manual-wrap">
+            <input id="manualId" placeholder="TKT-26-XXXXXXXXXX" autocomplete="off" spellcheck="false">
+            <button id="manualBtn" class="mini-btn">Check</button>
+          </div>
+          <div id="err"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <div class="section-title">Session Info</div>
+            <div class="section-sub">Live view of the scanner environment.</div>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="tag">Current Gate</div>
+              <div class="value" id="infoGate">Gate-1</div>
+            </div>
+            <div class="info-card">
+              <div class="tag">Connection</div>
+              <div class="value" id="infoNet">Online</div>
+            </div>
+            <div class="info-card">
+              <div class="tag">Last Result</div>
+              <div class="value" id="lastResult">Waiting</div>
+            </div>
+            <div class="info-card">
+              <div class="tag">Token Status</div>
+              <div class="value" id="tokenState">Not Saved</div>
+            </div>
+          </div>
+
+          <div class="token-wrap">
+            <input id="guardTokenInput" class="token-input" type="password" placeholder="Enter guard token">
+            <div class="token-actions">
+              <button id="toggleTokenBtn" class="btn ghost" type="button">Show</button>
+              <button id="saveTokenBtn" class="mini-btn" type="button">Save Token</button>
+              <button id="clearTokenBtn" class="btn ghost" type="button">Clear</button>
+            </div>
+            <div class="hint" id="tokenHint">Saved locally on this device and used automatically.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <div class="section-title">Recent Activity</div>
+            <div class="section-sub">Latest scans during this session. Tap any item to open full details.</div>
+          </div>
+        </div>
+        <div class="section-body">
+          <div id="log" class="log-list">
+            <div class="log-empty" id="logEmpty">No scans yet.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="footer-note">Ticket validation runs through your deployed Google Apps Script web app.</div>
+</div>
+
+<div id="activityModal" class="modal hide">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="activityModalTitle">Ticket Details</div>
+        <div class="modal-sub" id="activityModalSub">Scan details</div>
+      </div>
+      <button id="closeActivityModal" class="btn ghost modal-close" type="button">Close</button>
+    </div>
+    <div class="modal-status" id="activityModalStatus">Loading</div>
+    <div class="detail-grid" id="activityModalGrid"></div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL  = "https://script.google.com/macros/s/AKfycbwgEyhg6p43ss_vmj4fSDuXLpQEsgC6hodxlbAZ_JNEfCCkPeOgCvCe718tkgXe1YXV1A/exec";
+const GUARD_TOKEN = "";
+const GATE_NAME   = "Gate-Main-Club";
+const RESULT_VISIBLE_MS = 1600;
+const RELEASE_BUSY_MS = 450;
+const DUPLICATE_WINDOW_MS = 900;
+const APP_TIMEZONE = "Europe/Istanbul";
+const TOKEN_STORAGE_KEY = "concert_guard_token";
+
+const $ = id => document.getElementById(id);
+const qr = new Html5Qrcode("reader", { verbose:false });
+
+let running = false;
+let torchOn = false;
+let facing = "environment";
+let busy = false;
+let lastCode = "";
+let lastAt = 0;
+let wakeLock = null;
+let actx = null;
+let guardToken = "";
+let busyTimer = null;
+let hideTimer = null;
+let activeActivity = null;
+
+$("gateLabel").textContent = GATE_NAME;
+$("infoGate").textContent = GATE_NAME;
+
+function setError(message){
+  const el = $("err");
+  if (!message) {
+    el.style.display = "none";
+    el.textContent = "";
+    return;
+  }
+  el.style.display = "block";
+  el.textContent = message;
+}
+
+function setStatusChip(text){
+  $("statusChip").textContent = text;
+}
+
+function setDeviceChip(){
+  $("deviceChip").textContent = facing === "environment" ? "Rear Camera" : "Front Camera";
+}
+
+function setLastResult(text){
+  $("lastResult").textContent = text;
+}
+
+function currentGuardToken(){
+  return $("guardTokenInput").value.trim() || guardToken || GUARD_TOKEN || "";
+}
+
+function updateTokenUi(){
+  const hasToken = !!currentGuardToken();
+  $("tokenState").textContent = hasToken ? "Saved" : "Not Saved";
+  $("tokenHint").textContent = hasToken
+    ? "Saved locally in this browser and used automatically."
+    : "Enter the guard token once and save it on this device.";
+}
+
+function loadGuardToken(){
+  try{
+    guardToken = localStorage.getItem(TOKEN_STORAGE_KEY) || GUARD_TOKEN || "";
+  }catch(e){
+    guardToken = GUARD_TOKEN || "";
+  }
+  $("guardTokenInput").value = guardToken;
+  updateTokenUi();
+}
+
+function saveGuardToken(){
+  guardToken = $("guardTokenInput").value.trim();
+  try{
+    if (guardToken) localStorage.setItem(TOKEN_STORAGE_KEY, guardToken);
+    else localStorage.removeItem(TOKEN_STORAGE_KEY);
+  }catch(e){}
+  updateTokenUi();
+  setLastResult(guardToken ? "Token Saved" : "Token Cleared");
+}
+
+function clearGuardToken(){
+  guardToken = "";
+  $("guardTokenInput").value = "";
+  try{ localStorage.removeItem(TOKEN_STORAGE_KEY); }catch(e){}
+  updateTokenUi();
+  setLastResult("Token Cleared");
+}
+
+function toggleGuardTokenVisibility(){
+  const input = $("guardTokenInput");
+  const show = input.type === "password";
+  input.type = show ? "text" : "password";
+  $("toggleTokenBtn").textContent = show ? "Hide" : "Show";
+}
+
+function turkeyTime(date, withDate){
+  const opts = withDate
+    ? { timeZone: APP_TIMEZONE, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }
+    : { timeZone: APP_TIMEZONE, hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false };
+  return new Intl.DateTimeFormat('en-GB', opts).format(date);
+}
+
+function beep(freq, ms, type){
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = type || "sine";
+    o.frequency.value = freq;
+    o.connect(g);
+    g.connect(actx.destination);
+    g.gain.setValueAtTime(.001, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.35, actx.currentTime + .01);
+    g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + ms / 1000);
+    o.start();
+    o.stop(actx.currentTime + ms / 1000);
+  }catch(e){}
+}
+
+const feedback = {
+  ok:   () => { beep(880,120); setTimeout(() => beep(1320,140), 110); navigator.vibrate?.(80); },
+  warn: () => { beep(440,220,"square"); navigator.vibrate?.([60,60,60]); },
+  bad:  () => { beep(200,380,"sawtooth"); navigator.vibrate?.([120,80,120]); }
+};
+
+function net(){
+  const online = navigator.onLine;
+  $("net").className = "dot " + (online ? "on" : "off");
+  $("netText").textContent = online ? "Online" : "Offline";
+  $("infoNet").textContent = online ? "Online" : "Offline";
+}
+
+function tickClock(){
+  $("clock").textContent = "TR " + turkeyTime(new Date(), false);
+}
+
+async function pingApi(){
+  if (!SCRIPT_URL || SCRIPT_URL === "PASTE_YOUR_EXEC_URL_HERE") {
+    $("apiState").textContent = "Not Set";
+    return;
+  }
+  try{
+    const r = await fetch(SCRIPT_URL + "?action=ping&_=" + Date.now(), { method:"GET", redirect:"follow" });
+    const j = await r.json();
+    $("apiState").textContent = j.status === "ok" ? "Connected" : "Unavailable";
+  }catch(e){
+    $("apiState").textContent = "Offline";
+  }
+}
+
+async function requestWakeLock(){
+  try{
+    wakeLock = await navigator.wakeLock?.request("screen");
+  }catch(e){}
+}
+
+$("startBtn").onclick = async () => {
+  setError("");
+  try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
+
+  if (location.protocol !== "https:" && location.hostname !== "localhost") {
+    setError("Camera works only over HTTPS. Open this page using the https link.");
+    return;
+  }
+
+  if (!SCRIPT_URL || SCRIPT_URL === "PASTE_YOUR_EXEC_URL_HERE") {
+    setError("SCRIPT_URL is not set yet.");
+    return;
+  }
+
+  await start();
+};
+
+async function start(){
+  try{
+    setStatusChip("Starting...");
+    await qr.start(
+      { facingMode: facing },
+      {
+        fps: 18,
+        qrbox: { width: 260, height: 260 },
+        aspectRatio: 1,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      },
+      onScan,
+      () => {}
+    );
+    running = true;
+    $("startBtn").classList.add("hide");
+    $("camCtl").classList.remove("hide");
+    setStatusChip("Scanning");
+    setDeviceChip();
+    await requestWakeLock();
+  }catch(e){
+    setStatusChip("Idle");
+    setError("Camera could not start:\n" + e + "\n\nMake sure camera access is allowed in the browser and the page is opened over HTTPS.");
+  }
+}
+
+$("stopBtn").onclick = async () => {
+  if (!running) return;
+  await qr.stop();
+  qr.clear();
+  running = false;
+  $("startBtn").classList.remove("hide");
+  $("camCtl").classList.add("hide");
+  setStatusChip("Stopped");
+};
+
+$("flipBtn").onclick = async () => {
+  facing = facing === "environment" ? "user" : "environment";
+  setDeviceChip();
+  if (running) {
+    await qr.stop();
+    qr.clear();
+    running = false;
+  }
+  await start();
+};
+
+$("torchBtn").onclick = async () => {
+  try{
+    torchOn = !torchOn;
+    await qr.applyVideoConstraints({ advanced:[{ torch: torchOn }] });
+    $("torchBtn").textContent = torchOn ? "Flash Off" : "Flashlight";
+  }catch(e){
+    setError("This device does not support flashlight control.");
+  }
+};
+
+function onScan(text){
+  const now = Date.now();
+  if (busy) return;
+  if (text === lastCode && now - lastAt < DUPLICATE_WINDOW_MS) return;
+  lastCode = text;
+  lastAt = now;
+  verify(text, false);
+}
+
+$("manualBtn").onclick = () => {
+  const v = $("manualId").value.trim();
+  if (v) {
+    verify(v, true);
+    $("manualId").value = "";
+  }
+};
+
+$("manualId").addEventListener("keydown", e => {
+  if (e.key === "Enter") $("manualBtn").click();
+});
+
+$("saveTokenBtn").onclick = saveGuardToken;
+$("clearTokenBtn").onclick = clearGuardToken;
+$("toggleTokenBtn").onclick = toggleGuardTokenVisibility;
+$("closeActivityModal").onclick = closeActivityModal;
+$("activityModal").addEventListener('click', e => {
+  if (e.target.id === 'activityModal') closeActivityModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeActivityModal();
+});
+$("guardTokenInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") saveGuardToken();
+});
+$("guardTokenInput").addEventListener("input", updateTokenUi);
+
+async function verify(code, isManual){
+  busy = true;
+  setError("");
+  setStatusChip("Checking");
+  show("neutral", "⏳ Checking...");
+
+  const url = SCRIPT_URL
+    + "?id=" + encodeURIComponent(code)
+    + "&gate=" + encodeURIComponent(GATE_NAME)
+    + "&token=" + encodeURIComponent(currentGuardToken())
+    + (isManual ? "&manual=1" : "")
+    + "&_=" + Date.now();
+
+  try{
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    const r = await fetch(url, { method:"GET", redirect:"follow", signal:ctrl.signal });
+    clearTimeout(timer);
+    render(await r.json(), code);
+  }catch(e){
+    feedback.bad();
+    setStatusChip("Network Error");
+    setLastResult("Connection Error");
+    show("invalid", "🌐 Connection Error", navigator.onLine ? String(e) : "Internet connection is offline");
+    addLog(buildActivityEntry({
+      id: '',
+      code: code,
+      name: code,
+      statusText: 'Network Error',
+      scanStatus: 'network_error',
+      ticketType: '',
+      source: '',
+      gate: GATE_NAME
+    }));
+  }finally{
+    schedulePostScanReset();
+  }
+}
+
+function render(res, code){
+  switch(res.status){
+    case "success":
+      feedback.ok();
+      setStatusChip("Approved");
+      setLastResult("Approved");
+      show(
+        "success",
+        "✅ Approved",
+        `<b>${esc(res.name)}</b><br><span class="k">Ticket Type</span> ${esc(res.ticketType)}<br><span class="k">Code</span> <span dir="ltr">${esc(res.id)}</span>`
+      );
+      addLog(buildActivityEntry({
+        id: res.id,
+        code: code,
+        name: res.name,
+        statusText: 'Entry Approved',
+        scanStatus: res.status,
+        ticketType: res.ticketType,
+        arrivalDate: res.arrivalDate,
+        source: res.source,
+        gate: GATE_NAME
+      }));
+      refreshStats();
+      break;
+
+    case "valid_preview":
+      feedback.ok();
+      setStatusChip("Preview Valid");
+      setLastResult("Valid Preview");
+      show("success", "✅ Valid (Not Registered)", esc(res.name));
+      addLog(buildActivityEntry({
+        id: res.id,
+        code: code,
+        name: res.name,
+        statusText: 'Preview Valid',
+        scanStatus: res.status,
+        ticketType: res.ticketType,
+        arrivalDate: res.arrivalDate,
+        source: res.source,
+        gate: GATE_NAME
+      }));
+      break;
+
+    case "already_used":
+      feedback.warn();
+      setStatusChip("Already Used");
+      setLastResult("Already Used");
+      show(
+        "used",
+        "⚠️ Already Used",
+        `<b>${esc(res.name || "")}</b><br><span class="k">Previous Entry</span> <span dir="ltr">${esc(res.arrivalDate || "?")}</span>`
+      );
+      addLog(buildActivityEntry({
+        id: res.id,
+        code: code,
+        name: res.name,
+        statusText: 'Already Used',
+        scanStatus: res.status,
+        ticketType: res.ticketType,
+        arrivalDate: res.arrivalDate,
+        source: res.source,
+        gate: GATE_NAME
+      }));
+      break;
+
+    case "not_valid":
+      feedback.bad();
+      setStatusChip(res.reason === "unpaid" ? "Unpaid" : "Not Active");
+      setLastResult(res.reason === "unpaid" ? "Unpaid" : "Ticket Not Active");
+      show(
+        "invalid",
+        res.reason === "unpaid" ? "⛔ Unpaid" : "⛔ Ticket Not Active",
+        esc(res.name || "") + (res.ticketType ? "<br>" + esc(res.ticketType) : "")
+      );
+      addLog(buildActivityEntry({
+        id: res.id,
+        code: code,
+        name: res.name || code,
+        statusText: res.reason === "unpaid" ? 'Unpaid' : 'Not Active',
+        scanStatus: res.status,
+        ticketType: res.ticketType,
+        arrivalDate: res.arrivalDate,
+        source: res.source,
+        gate: GATE_NAME
+      }));
+      break;
+
+    case "unauthorized":
+      feedback.bad();
+      setStatusChip("Unauthorized");
+      setLastResult("Unauthorized");
+      show("invalid", "🔒 Unauthorized", "Guard token is incorrect.");
+      addLog(buildActivityEntry({
+        id: '',
+        code: code,
+        name: code,
+        statusText: 'Unauthorized',
+        scanStatus: res.status,
+        source: '',
+        gate: GATE_NAME
+      }));
+      break;
+
+    case "busy":
+      setStatusChip("Busy");
+      setLastResult("Busy");
+      show("neutral", "⏳ Busy", "Please scan again.");
+      addLog(buildActivityEntry({
+        id: res.id || '',
+        code: code,
+        name: res.name || code,
+        statusText: 'Busy',
+        scanStatus: res.status,
+        ticketType: res.ticketType,
+        source: res.source,
+        gate: GATE_NAME
+      }));
+      break;
+
+    case "error":
+      feedback.bad();
+      setStatusChip("Server Error");
+      setLastResult("Server Error");
+      show("invalid", "⛔ Server Error", esc(res.message || ""));
+      addLog(buildActivityEntry({
+        id: res.id || '',
+        code: code,
+        name: res.name || code,
+        statusText: 'Server Error',
+        scanStatus: res.status,
+        ticketType: res.ticketType,
+        source: res.source,
+        gate: GATE_NAME
+      }));
+      break;
+
+    default:
+      feedback.bad();
+      setStatusChip("Invalid");
+      setLastResult("Invalid");
+      show(
+        "invalid",
+        "❌ Invalid",
+        res.reason === "bad_signature"
+          ? "Ticket signature is invalid"
+          : res.reason === "not_found"
+            ? "This code does not exist in the system"
+            : esc(res.message || "")
+      );
+      addLog(buildActivityEntry({
+        id: res.id || '',
+        code: code,
+        name: res.name || code,
+        statusText: 'Invalid',
+        scanStatus: res.reason || res.status,
+        ticketType: res.ticketType,
+        source: res.source,
+        gate: GATE_NAME
+      }));
+  }
+}
+
+function show(cls, title, details){
+  const el = $("result");
+  el.className = cls;
+  el.style.display = "block";
+  el.innerHTML = title + (details ? `<div id="details">${details}</div>` : "");
+}
+
+function hide(){
+  $("result").style.display = "none";
+}
+
+function schedulePostScanReset(){
+  clearTimeout(busyTimer);
+  clearTimeout(hideTimer);
+  busyTimer = setTimeout(() => {
+    busy = false;
+    if (running) setStatusChip("Scanning");
+  }, RELEASE_BUSY_MS);
+  hideTimer = setTimeout(() => {
+    hide();
+  }, RESULT_VISIBLE_MS);
+}
+
+function activitySummary(entry){
+  return [entry.statusText, entry.ticketType, entry.id].filter(Boolean).join(' · ');
+}
+
+function openActivityModal(entry){
+  activeActivity = entry;
+  $("activityModal").classList.remove("hide");
+  document.body.style.overflow = "hidden";
+  $("activityModalTitle").textContent = entry.name || entry.id || entry.code || "Ticket Details";
+  $("activityModalSub").textContent = entry.scanTime || turkeyTime(new Date(), true);
+  $("activityModalStatus").textContent = entry.statusText || "Record";
+  $("activityModalGrid").innerHTML = '<div class="detail-card"><div class="detail-label">Loading</div><div class="detail-value">Fetching ticket details...</div></div>';
+}
+
+function closeActivityModal(){
+  $("activityModal").classList.add("hide");
+  document.body.style.overflow = "";
+  activeActivity = null;
+}
+
+function detailCard(label, value, mono){
+  return `<div class="detail-card"><div class="detail-label">${esc(label)}</div><div class="detail-value${mono ? ' mono' : ''}">${esc(value || '—')}</div></div>`;
+}
+
+function renderActivityDetails(data, entry, errorText){
+  const title = (data && data.fullName) || entry.name || data.id || entry.id || entry.code || 'Ticket Details';
+  const subtitle = [entry.scanTime, entry.gate ? ('Gate ' + entry.gate) : '', entry.scanStatus].filter(Boolean).join(' · ');
+  $("activityModalTitle").textContent = title;
+  $("activityModalSub").textContent = subtitle || turkeyTime(new Date(), true);
+  $("activityModalStatus").textContent = entry.statusText || (data && data.status) || 'Record';
+
+  const cards = [];
+  cards.push(detailCard('Full Name', (data && data.fullName) || entry.name || ''));
+  cards.push(detailCard('Ticket ID', (data && data.id) || entry.id || entry.code || '', true));
+  cards.push(detailCard('Ticket Type', (data && data.ticketType) || entry.ticketType || ''));
+  cards.push(detailCard('Payment Status', (data && data.paymentStatus) || ''));
+  cards.push(detailCard('Entry Status', (data && data.entryStatus) || ''));
+  cards.push(detailCard('Amount', (data && data.amount) || ''));
+  cards.push(detailCard('Payment Method', (data && data.paymentMethod) || ''));
+  cards.push(detailCard('Tracking Number', (data && data.trackingNumber) || '', true));
+  cards.push(detailCard('Purchase Date', (data && data.purchaseDate) || ''));
+  cards.push(detailCard('Arrival Date', (data && data.arrivalDate) || entry.arrivalDate || ''));
+  cards.push(detailCard('Passport ID', (data && data.passportId) || '', true));
+  cards.push(detailCard('Phone', (data && data.phone) || '', true));
+  cards.push(detailCard('Sex', (data && data.sex) || ''));
+  cards.push(detailCard('Check-in', (data && data.checkin) || ''));
+  cards.push(detailCard('Sheet Row', data && data.row ? String(data.row) : ''));
+  cards.push(detailCard('Source', entry.source || ''));
+  cards.push(detailCard('Gate', entry.gate || ''));
+  cards.push(detailCard('Scan Time', entry.scanTime || ''));
+  if (errorText) cards.push(detailCard('Info', errorText));
+  $("activityModalGrid").innerHTML = cards.join('');
+}
+
+async function showActivityDetails(entry){
+  openActivityModal(entry);
+  if (!entry.id || !SCRIPT_URL || SCRIPT_URL === "PASTE_YOUR_EXEC_URL_HERE") {
+    renderActivityDetails({}, entry, 'Detailed record is not available for this item.');
+    return;
+  }
+  try {
+    const url = SCRIPT_URL
+      + '?action=info&id=' + encodeURIComponent(entry.id)
+      + '&token=' + encodeURIComponent(currentGuardToken())
+      + '&_=' + Date.now();
+    const r = await fetch(url, { method:'GET', redirect:'follow' });
+    const data = await r.json();
+    if (activeActivity !== entry) return;
+    if (data.status === 'ok') renderActivityDetails(data, entry, '');
+    else renderActivityDetails({}, entry, data.message || data.reason || 'Ticket details not found.');
+  } catch (e) {
+    if (activeActivity !== entry) return;
+    renderActivityDetails({}, entry, String(e));
+  }
+}
+
+function buildActivityEntry(payload){
+  return {
+    id: payload.id || '',
+    code: payload.code || payload.id || '',
+    name: payload.name || '',
+    ticketType: payload.ticketType || '',
+    statusText: payload.statusText || '',
+    scanStatus: payload.scanStatus || '',
+    arrivalDate: payload.arrivalDate || '',
+    source: payload.source || '',
+    gate: payload.gate || GATE_NAME,
+    scanTime: payload.scanTime || turkeyTime(new Date(), true)
+  };
+}
+
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[c]));
+}
+
+function addLog(entry){
+  const empty = $("logEmpty");
+  if (empty) empty.remove();
+
+  const d = document.createElement("button");
+  d.type = "button";
+  d.className = "log-item";
+  d.innerHTML = `
+    <div class="log-row">
+      <div class="log-main">${esc(entry.name || entry.id || entry.code || 'Unknown')}</div>
+      <div class="log-time">${esc(entry.scanTime || turkeyTime(new Date(), false))}</div>
+    </div>
+    <div class="log-sub">${esc(activitySummary(entry) || 'Open details')}</div>`;
+  d.addEventListener('click', () => showActivityDetails(entry));
+  $("log").prepend(d);
+  while ($("log").children.length > 40) $("log").lastChild.remove();
+}
+
+async function refreshStats(){
+  if (!SCRIPT_URL || SCRIPT_URL === "PASTE_YOUR_EXEC_URL_HERE") return;
+  try{
+    const r = await fetch(SCRIPT_URL + "?action=stats&token=" + encodeURIComponent(currentGuardToken()) + "&_=" + Date.now());
+    const s = await r.json();
+    if (s.status === "ok") {
+      $("sIn").textContent = s.checkedIn;
+      $("sLeft").textContent = s.remaining;
+      $("sPaid").textContent = s.paid;
+    }
+  }catch(e){}
+}
+
+$("statsBtn").onclick = refreshStats;
+
+addEventListener("online", net);
+addEventListener("offline", net);
+loadGuardToken();
+net();
+setDeviceChip();
+tickClock();
+setInterval(tickClock, 1000);
+pingApi();
+refreshStats();
+setInterval(refreshStats, 60000);
+setInterval(pingApi, 30000);
+requestWakeLock();
+
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible") {
+    await requestWakeLock();
+    pingApi();
+    net();
+  }
+});
+</script>
+</body>
+</html>
