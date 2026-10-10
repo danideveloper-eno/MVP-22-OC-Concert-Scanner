@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#000000">
-<title>MVP 22 October Concert Scanner</title>
+<title>MVP 22 OC Concert Scanner</title>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   :root{
@@ -767,7 +767,7 @@
     <div class="topbar">
       <div class="title-wrap">
         <div class="eyebrow">
-          <span>MVP 22 October Concert Scanner</span>
+          <span>MVP 22 OC Concert Scanner</span>
         </div>
         <h1>Entry Scanner</h1>
         <p class="subtitle">check-in interface for live ticket validation, entry control, and real-time attendance tracking.</p>
@@ -935,12 +935,13 @@
 <script>
 const SCRIPT_URL  = "https://script.google.com/macros/s/AKfycbwgEyhg6p43ss_vmj4fSDuXLpQEsgC6hodxlbAZ_JNEfCCkPeOgCvCe718tkgXe1YXV1A/exec";
 const GUARD_TOKEN = "";
-const GATE_NAME   = "Gate-Main";
+const GATE_NAME   = "Gate-1";
 const RESULT_VISIBLE_MS = 1600;
 const RELEASE_BUSY_MS = 450;
 const DUPLICATE_WINDOW_MS = 900;
 const APP_TIMEZONE = "Europe/Istanbul";
-const TOKEN_STORAGE_KEY = "";
+const TOKEN_SCOPE = (SCRIPT_URL.match(/\/s\/([^/]+)/) || [null, SCRIPT_URL.replace(/[^A-Za-z0-9_-]/g, "_")])[1];
+const TOKEN_STORAGE_KEY = "concert_guard_token_" + TOKEN_SCOPE;
 
 const $ = id => document.getElementById(id);
 const qr = new Html5Qrcode("reader", { verbose:false });
@@ -984,8 +985,14 @@ function setLastResult(text){
   $("lastResult").textContent = text;
 }
 
+function clearStats(){
+  $("sIn").textContent = "–";
+  $("sLeft").textContent = "–";
+  $("sPaid").textContent = "–";
+}
+
 function currentGuardToken(){
-  return $("guardTokenInput").value.trim() || guardToken || GUARD_TOKEN || "";
+  return $("guardTokenInput").value.trim() || GUARD_TOKEN || "";
 }
 
 function updateTokenUi(){
@@ -1013,7 +1020,9 @@ function saveGuardToken(){
     else localStorage.removeItem(TOKEN_STORAGE_KEY);
   }catch(e){}
   updateTokenUi();
+  clearStats();
   setLastResult(guardToken ? "Token Saved" : "Token Cleared");
+  refreshStats();
 }
 
 function clearGuardToken(){
@@ -1021,7 +1030,9 @@ function clearGuardToken(){
   $("guardTokenInput").value = "";
   try{ localStorage.removeItem(TOKEN_STORAGE_KEY); }catch(e){}
   updateTokenUi();
+  clearStats();
   setLastResult("Token Cleared");
+  if (running) $("stopBtn").click();
 }
 
 function toggleGuardTokenVisibility(){
@@ -1103,6 +1114,13 @@ $("startBtn").onclick = async () => {
 
   if (!SCRIPT_URL || SCRIPT_URL === "PASTE_YOUR_EXEC_URL_HERE") {
     setError("SCRIPT_URL is not set yet.");
+    return;
+  }
+
+  if (!currentGuardToken()) {
+    setStatusChip("Token Required");
+    setLastResult("Token Required");
+    setError("Enter the guard token before starting the scanner.");
     return;
   }
 
@@ -1200,9 +1218,23 @@ document.addEventListener('keydown', e => {
 $("guardTokenInput").addEventListener("keydown", e => {
   if (e.key === "Enter") saveGuardToken();
 });
-$("guardTokenInput").addEventListener("input", updateTokenUi);
+$("guardTokenInput").addEventListener("input", () => {
+  updateTokenUi();
+  clearStats();
+  if (!currentGuardToken() && running) $("stopBtn").click();
+});
 
 async function verify(code, isManual){
+  const token = currentGuardToken();
+  if (!token) {
+    clearStats();
+    setError("Enter the guard token before checking a ticket.");
+    setStatusChip("Token Required");
+    setLastResult("Token Required");
+    show("invalid", "🔒 Guard Token Required", "Enter the token for this concert before scanning.");
+    return;
+  }
+
   busy = true;
   setError("");
   setStatusChip("Checking");
@@ -1211,7 +1243,7 @@ async function verify(code, isManual){
   const url = SCRIPT_URL
     + "?id=" + encodeURIComponent(code)
     + "&gate=" + encodeURIComponent(GATE_NAME)
-    + "&token=" + encodeURIComponent(currentGuardToken())
+    + "&token=" + encodeURIComponent(token)
     + (isManual ? "&manual=1" : "")
     + "&_=" + Date.now();
 
@@ -1332,7 +1364,9 @@ function render(res, code){
       feedback.bad();
       setStatusChip("Unauthorized");
       setLastResult("Unauthorized");
-      show("invalid", "🔒 Unauthorized", "Guard token is incorrect.");
+      show("invalid", "🔒 Unauthorized", res.reason === "token_not_configured"
+        ? "Guard token is not configured in this concert's Apps Script project."
+        : "Guard token is incorrect.");
       addLog(buildActivityEntry({
         id: '',
         code: code,
@@ -1546,16 +1580,32 @@ function addLog(entry){
 }
 
 async function refreshStats(){
-  if (!SCRIPT_URL || SCRIPT_URL === "PASTE_YOUR_EXEC_URL_HERE") return;
+  if (!SCRIPT_URL || SCRIPT_URL === "PASTE_YOUR_EXEC_URL_HERE") {
+    clearStats();
+    return;
+  }
+  const token = currentGuardToken();
+  if (!token) {
+    clearStats();
+    return;
+  }
   try{
-    const r = await fetch(SCRIPT_URL + "?action=stats&token=" + encodeURIComponent(currentGuardToken()) + "&_=" + Date.now());
+    const r = await fetch(SCRIPT_URL + "?action=stats&token=" + encodeURIComponent(token) + "&_=" + Date.now());
     const s = await r.json();
+    if (token !== currentGuardToken()) {
+      clearStats();
+      return;
+    }
     if (s.status === "ok") {
       $("sIn").textContent = s.checkedIn;
       $("sLeft").textContent = s.remaining;
       $("sPaid").textContent = s.paid;
+    } else {
+      clearStats();
     }
-  }catch(e){}
+  }catch(e){
+    clearStats();
+  }
 }
 
 $("statsBtn").onclick = refreshStats;
